@@ -3,337 +3,515 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>深圳市城市发展政策演变可视化 (1985-2020)</title>
+    <title>SHENZHEN EVOLUTION 1985-2020</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;500;700&family=Noto+Sans+SC:wght@300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap');
-        
-        /* 核心：强制全屏，无滚动条 */
-        html, body, #root {
-            height: 100%;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* 防止body出现滚动条 */
+        :root {
+            --bg-paper: #fdfbf7;
+            --line-color: #cbd5e0;
+            --line-strong: #718096;
+            --accent-blue: #4299e1;
+            --text-main: #2d3748;
+            --text-sub: #718096;
+        }
+
+        body {
+            background-color: var(--bg-paper);
+            color: var(--text-main);
             font-family: 'Noto Sans SC', sans-serif;
-            background-color: #f9f9f7;
-            color: #333;
-        }
-        
-        .serif {
-            font-family: 'Noto Serif SC', serif;
-        }
-
-        /* 优化内部滚动条样式 */
-        .custom-scroll::-webkit-scrollbar {
-            width: 4px;
-        }
-        .custom-scroll::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.05);
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 4px;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
+            background-image: 
+                linear-gradient(var(--line-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--line-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            overflow: hidden; /* 禁止整体滚动 */
         }
 
-        /* 动画定义 */
-        .draw-path {
-            stroke-dasharray: 1000;
-            stroke-dashoffset: 1000;
-            animation: draw 2s ease-out forwards;
+        /* 纸张纹理 */
+        .paper-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            opacity: 0.4;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.1'/%3E%3C/svg%3E");
+            z-index: -1;
         }
+
+        .serif { font-family: 'Noto Serif SC', serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* 容器风格 */
+        .blueprint-box {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--line-color);
+            position: relative;
+            backdrop-filter: blur(4px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 装饰性边角 */
+        .corner-mark::before, .corner-mark::after {
+            content: '';
+            position: absolute;
+            width: 8px; height: 8px;
+            border-color: var(--line-strong);
+            border-style: solid;
+            transition: all 0.3s ease;
+        }
+        .corner-mark::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+        .corner-mark::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+        /* 选中状态 */
+        .timeline-item.active {
+            background: #ebf8ff;
+            border-left: 4px solid var(--accent-blue);
+        }
+        .timeline-item.active .year { color: var(--accent-blue); font-weight: 700; }
+
+        /* 滚动条隐藏 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 动画过渡 */
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .draw-anim { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 2.5s ease-out forwards; }
         @keyframes draw { to { stroke-dashoffset: 0; } }
-
-        .fade-in { animation: fadeIn 0.8s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .slide-up { animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
-        .fade-out { animation: fadeOut 0.5s ease-in-out forwards; }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
-
+        .pulse-anim { animation: pulse 3s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
     </style>
 </head>
-<body>
-    <div id="root"></div>
+<body class="h-screen w-screen flex flex-col p-4 md:p-6 box-border">
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+    <div class="paper-overlay"></div>
 
-        // --- 内置 SVG 图标组件 ---
-        const LayoutIcon = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-        );
-        const MaximizeIcon = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-        );
-        const ZapIcon = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-        );
-        const ArrowRight = ({ className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-        );
+    <!-- 顶部标题 -->
+    <header class="flex-none h-14 md:h-16 flex justify-between items-center border-b border-gray-300 bg-white/60 mb-4 px-4 blueprint-box">
+        <div class="flex items-center gap-4">
+            <h1 class="text-xl md:text-2xl font-bold tracking-widest serif text-gray-800">
+                SHENZHEN <span class="text-blue-500 font-light">EVOLUTION</span>
+            </h1>
+            <span class="text-xs md:text-sm mono text-gray-400 pt-1">1985 — 2020</span>
+        </div>
+        <div class="hidden md:flex gap-4 text-xs mono text-gray-500">
+            <span>SCALE: MACRO</span>
+            <span>TYPE: URBAN HISTORY</span>
+        </div>
+    </header>
 
-        // --- SVG 地图组件 (保持不变，省略部分重复代码以保持简洁) ---
-        const Map1986 = () => (
-            <svg viewBox="0 0 400 300" className="w-full h-full fade-in">
-                <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e5e5" strokeWidth="1"/></pattern></defs>
-                <rect width="400" height="300" fill="url(#grid)" />
-                <path d="M 20 250 Q 100 240 200 260 T 380 240" fill="none" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 4" />
-                <path d="M 40 150 L 360 150" fill="none" stroke="#334155" strokeWidth="2" className="draw-path" />
-                <circle cx="300" cy="150" r="25" fill="rgba(255,255,255,0.8)" stroke="#0f766e" strokeWidth="1.5" />
-                <text x="300" y="155" textAnchor="middle" fontSize="10" fill="#0f766e" className="serif">罗湖</text>
-                <circle cx="220" cy="150" r="20" fill="rgba(255,255,255,0.8)" stroke="#0f766e" strokeWidth="1.5" />
-                <text x="220" y="155" textAnchor="middle" fontSize="10" fill="#0f766e" className="serif">上步</text>
-                <circle cx="80" cy="150" r="18" fill="rgba(255,255,255,0.8)" stroke="#0f766e" strokeWidth="1.5" />
-                <text x="80" y="155" textAnchor="middle" fontSize="10" fill="#0f766e" className="serif">南头</text>
-                <path d="M 160 120 L 160 180" fill="none" stroke="#84cc16" strokeWidth="1" strokeDasharray="2 2" />
-                <path d="M 260 120 L 260 180" fill="none" stroke="#84cc16" strokeWidth="1" strokeDasharray="2 2" />
-                <text x="200" y="280" textAnchor="middle" fontSize="12" fill="#64748b" className="serif italic">带状组团结构 (1986)</text>
-            </svg>
-        );
+    <!-- 主体内容：Grid 布局 -->
+    <main class="flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 min-h-0">
+        
+        <!-- 左侧：时间轴导航 (占2列) -->
+        <nav class="md:col-span-3 flex flex-col gap-2 blueprint-box p-2 overflow-y-auto no-scrollbar">
+            <div class="text-xs font-bold text-gray-400 px-3 py-2 border-b border-gray-100 mb-2">TIMELINE SELECTOR</div>
+            
+            <button onclick="switchEra(0)" class="timeline-item active text-left px-4 py-3 hover:bg-gray-50 transition-colors group rounded-sm border-l-4 border-transparent">
+                <div class="year text-lg mono text-gray-600 group-hover:text-gray-800">1985-1995</div>
+                <div class="text-xs text-gray-500 mt-1">奠基与特区初创</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">Linear Cluster Structure</div>
+            </button>
 
-        const Map1996 = () => (
-            <svg viewBox="0 0 400 300" className="w-full h-full fade-in">
-                <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e5e5" strokeWidth="1"/></pattern></defs>
-                <rect width="400" height="300" fill="url(#grid)" />
-                <path d="M 20 100 L 380 80 L 380 240 L 20 260 Z" fill="rgba(203, 213, 225, 0.1)" stroke="none" />
-                <line x1="100" y1="50" x2="100" y2="280" stroke="#94a3b8" strokeWidth="1" strokeDasharray="5 2" />
-                <line x1="200" y1="50" x2="200" y2="280" stroke="#94a3b8" strokeWidth="1" strokeDasharray="5 2" />
-                <line x1="300" y1="50" x2="300" y2="280" stroke="#94a3b8" strokeWidth="1" strokeDasharray="5 2" />
-                <path d="M 20 180 L 380 180" stroke="#334155" strokeWidth="1.5" />
-                <path d="M 20 130 L 380 120" stroke="#64748b" strokeWidth="1" />
-                <path d="M 20 230 L 380 230" stroke="#64748b" strokeWidth="1" />
-                <rect x="280" y="160" width="40" height="40" fill="none" stroke="#0369a1" strokeWidth="1.5" />
-                <text x="300" y="185" textAnchor="middle" fontSize="10" fill="#0369a1" className="serif">福田中心</text>
-                <circle cx="100" cy="180" r="15" fill="none" stroke="#0369a1" strokeWidth="1" />
-                <text x="100" y="185" textAnchor="middle" fontSize="10" fill="#0369a1" className="serif">高新园</text>
-                <text x="200" y="280" textAnchor="middle" fontSize="12" fill="#64748b" className="serif italic">网状结构 (1996)</text>
-            </svg>
-        );
+            <button onclick="switchEra(1)" class="timeline-item text-left px-4 py-3 hover:bg-gray-50 transition-colors group rounded-sm border-l-4 border-transparent">
+                <div class="year text-lg mono text-gray-600 group-hover:text-gray-800">1996-2005</div>
+                <div class="text-xs text-gray-500 mt-1">增量扩张与工业化</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">Network & High-Tech</div>
+            </button>
 
-        const Map2010 = () => (
-            <svg viewBox="0 0 400 300" className="w-full h-full fade-in">
-                 <defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e5e5" strokeWidth="1"/></pattern></defs>
-                <rect width="400" height="300" fill="url(#grid)" />
-                <path d="M 20 100 Q 150 150 180 80 T 300 100 T 380 60" fill="none" stroke="#166534" strokeWidth="1.5" strokeDasharray="2 2" />
-                <path d="M 30 250 Q 100 200 150 240 T 350 220" fill="none" stroke="#166534" strokeWidth="1.5" strokeDasharray="2 2" />
-                <path d="M 60 180 L 280 170" fill="none" stroke="#334155" strokeWidth="0.5" />
-                <polygon points="60,160 75,190 45,190" fill="rgba(255,255,255,0.9)" stroke="#b91c1c" strokeWidth="1.5" />
-                <text x="60" y="205" textAnchor="middle" fontSize="10" fill="#b91c1c" className="serif">前海</text>
-                <polygon points="280,150 295,180 265,180" fill="rgba(255,255,255,0.9)" stroke="#b91c1c" strokeWidth="1.5" />
-                <text x="280" y="195" textAnchor="middle" fontSize="10" fill="#b91c1c" className="serif">福田-罗湖</text>
-                <circle cx="150" cy="120" r="8" fill="none" stroke="#475569" strokeWidth="1" />
-                <circle cx="340" cy="160" r="8" fill="none" stroke="#475569" strokeWidth="1" />
-                <circle cx="130" cy="220" r="8" fill="none" stroke="#475569" strokeWidth="1" />
-                <text x="200" y="280" textAnchor="middle" fontSize="12" fill="#64748b" className="serif italic">双中心与生态控制 (2010)</text>
-            </svg>
-        );
+            <button onclick="switchEra(2)" class="timeline-item text-left px-4 py-3 hover:bg-gray-50 transition-colors group rounded-sm border-l-4 border-transparent">
+                <div class="year text-lg mono text-gray-600 group-hover:text-gray-800">2006-2020</div>
+                <div class="text-xs text-gray-500 mt-1">质量转型与大湾区</div>
+                <div class="text-[10px] text-gray-400 mt-0.5">Polycentric Innovation</div>
+            </button>
+            
+            <div class="mt-auto p-4 opacity-50 hidden md:block">
+                <!-- 抽象罗盘/数据图 -->
+                <svg viewBox="0 0 100 100" class="w-full h-auto stroke-gray-300 fill-none">
+                    <circle cx="50" cy="50" r="40" stroke-width="0.5" />
+                    <circle cx="50" cy="50" r="30" stroke-width="0.5" stroke-dasharray="2 2" />
+                    <path d="M50,10 L50,90 M10,50 L90,50" stroke-width="0.5" />
+                    <path d="M50,10 L55,20 L45,20 Z" fill="#cbd5e0" stroke="none" />
+                    <text x="50" y="28" text-anchor="middle" font-size="8" fill="#cbd5e0" class="mono">N</text>
+                </svg>
+            </div>
+        </nav>
 
-        const policies = [
+        <!-- 中间：视觉展示 (占5列) -->
+        <section class="md:col-span-5 blueprint-box corner-mark flex flex-col p-4 relative overflow-hidden">
+            <div class="absolute top-4 right-4 text-xs font-bold text-blue-400 border border-blue-200 px-2 py-0.5 rounded bg-blue-50 z-10">
+                SPATIAL STRUCTURE
+            </div>
+            
+            <!-- 动态 SVG 容器 -->
+            <div class="flex-1 flex items-center justify-center relative w-full h-full bg-gray-50/50" id="visual-container">
+                <!-- SVG 内容将通过 JS 动态注入 -->
+            </div>
+
+            <!-- 底部图例 -->
+            <div class="h-16 border-t border-gray-200 mt-4 pt-2 grid grid-cols-3 gap-2 text-[10px] text-gray-500 text-center items-center z-10 bg-white/50 backdrop-blur-sm">
+                <div id="legend-1" class="flex flex-col items-center">
+                    <span class="w-8 h-1 bg-blue-400 mb-1"></span>
+                    <span id="legend-text-1">城市轴线</span>
+                </div>
+                <div id="legend-2" class="flex flex-col items-center">
+                    <span class="w-3 h-3 border border-gray-600 bg-gray-100 rounded-sm mb-1"></span>
+                    <span id="legend-text-2">核心组团</span>
+                </div>
+                <div id="legend-3" class="flex flex-col items-center">
+                    <span class="w-8 h-4 border border-dashed border-green-400 bg-green-50/30 mb-1"></span>
+                    <span id="legend-text-3">生态/绿带</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：详情面板 (占4列) -->
+        <article class="md:col-span-4 blueprint-box p-5 flex flex-col min-h-0">
+            <div id="info-content" class="flex-1 overflow-y-auto no-scrollbar pr-2">
+                <!-- 内容将通过 JS 动态注入 -->
+            </div>
+        </article>
+
+    </main>
+
+    <!-- 底部状态栏 -->
+    <footer class="flex-none h-6 mt-2 flex justify-between items-end text-[10px] text-gray-400 mono px-2">
+        <div>SYS_STATUS: ONLINE | DATA_SOURCE: SZ_PLANNING_ARCHIVES</div>
+        <div>RENDER_MODE: WIREFRAME_V2.1</div>
+    </footer>
+
+    <script>
+        // 数据源
+        const eraData = [
             {
-                id: '1986',
-                year: '1986 - 1995',
-                title: '奠基期：带状组团',
-                subtitle: '《深圳经济特区总体规划（1986-2000）》',
-                icon: <LayoutIcon className="w-5 h-5" />,
-                visualization: Map1986,
-                keywords: ['带状发展', '特区建设', '防止摊大饼'],
-                description: '这是深圳城市发展的“宪法”。面对早期“三来一补”带来的爆发式增长，规划极具前瞻性地拒绝了单中心同心圆式的扩张，确立了依托深南大道的“带状组团结构”。',
-                details: [
-                    '空间策略：沿东西向发展，形成罗湖、上步、南头等独立组团。',
-                    '隔离机制：组团之间保留绿化隔离带，防止城市无序粘连。',
-                    '背景：适应特区狭长的地理地形，服务外向型经济。'
-                ],
-                source: '来源：1989年国务院批准实施'
+                year: "1985-1995",
+                title: "带状组团与特区奠基",
+                subtitle: "Foundation Phase",
+                svgContent: `
+                    <svg viewBox="0 0 600 400" class="w-full h-full">
+                        <defs>
+                            <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                                <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#f0f0f0" stroke-width="1"/>
+                            </pattern>
+                            <pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                                <rect width="2" height="4" transform="translate(0,0)" fill="#e6fffa" />
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                        
+                        <!-- 抽象海岸线 -->
+                        <path d="M0,280 C50,290 150,260 250,280 C350,300 450,250 600,270 L600,400 L0,400 Z" fill="#ebf8ff" stroke="none" opacity="0.5"/>
+                        <path d="M0,280 C50,290 150,260 250,280 C350,300 450,250 600,270" fill="none" stroke="#bee3f8" stroke-width="2" stroke-dasharray="5,5"/>
+
+                        <!-- 广九铁路 -->
+                        <path d="M300,0 L300,200 L350,260 L350,400" stroke="#718096" stroke-width="1" stroke-dasharray="8,4" opacity="0.5"/>
+                        <text x="310" y="30" font-size="8" fill="#718096" transform="rotate(90 310,30)">RAILWAY</text>
+
+                        <!-- 绿化隔离带 (Wavy lines) -->
+                        <path d="M180,180 Q200,230 180,280" stroke="#68d391" stroke-width="20" stroke-opacity="0.2" fill="none" />
+                        <path d="M420,180 Q400,230 420,280" stroke="#68d391" stroke-width="20" stroke-opacity="0.2" fill="none" />
+
+                        <!-- 深南大道轴线 -->
+                        <path class="draw-anim" d="M50,230 L550,230" stroke="#4299e1" stroke-width="4" fill="none" />
+                        <text x="500" y="220" font-size="10" fill="#4299e1" class="mono">SHENNAN RD.</text>
+
+                        <!-- 组团1：罗湖 (成熟) -->
+                        <g transform="translate(350, 230)">
+                            <rect x="-30" y="-30" width="60" height="60" fill="rgba(66, 153, 225, 0.1)" stroke="#2d3748" stroke-width="1.5"/>
+                            <rect x="-20" y="-20" width="10" height="10" fill="#2d3748" opacity="0.2"/>
+                            <rect x="10" y="0" width="15" height="15" fill="#2d3748" opacity="0.2"/>
+                            <rect x="-10" y="10" width="20" height="10" fill="#2d3748" opacity="0.2"/>
+                            <text x="0" y="45" text-anchor="middle" font-size="12" fill="#2d3748" font-weight="bold">LUOHU</text>
+                            
+                            <!-- 国贸大厦 -->
+                            <g transform="translate(10, -35)">
+                                <path d="M0,0 L0,-30 L10,-30 L10,0" fill="none" stroke="#2b6cb0" stroke-width="1.5"/>
+                                <text x="5" y="-35" text-anchor="middle" font-size="8" fill="#2b6cb0">GUOMAO</text>
+                            </g>
+                        </g>
+
+                        <!-- 组团2：福田/上步 (规划中) -->
+                        <g transform="translate(250, 230)">
+                            <rect x="-25" y="-25" width="50" height="50" fill="none" stroke="#cbd5e0" stroke-width="1.5" stroke-dasharray="4,2"/>
+                            <text x="0" y="40" text-anchor="middle" font-size="10" fill="#718096">FUTIAN(Plan)</text>
+                        </g>
+
+                        <!-- 组团3：南山/蛇口 (起步) -->
+                        <g transform="translate(100, 230)">
+                            <rect x="-25" y="-20" width="50" height="40" fill="none" stroke="#718096" stroke-width="1.5"/>
+                            <path d="M-25,20 L-35,40" stroke="#718096" stroke-width="1"/> <!-- Port hint -->
+                            <text x="0" y="35" text-anchor="middle" font-size="10" fill="#718096">NANSHAN</text>
+                        </g>
+
+                        <!-- 装饰：比例尺 -->
+                        <g transform="translate(480, 350)">
+                            <line x1="0" y1="0" x2="80" y2="0" stroke="#cbd5e0" stroke-width="1"/>
+                            <line x1="0" y1="-3" x2="0" y2="3" stroke="#cbd5e0" stroke-width="1"/>
+                            <line x1="40" y1="-2" x2="40" y2="2" stroke="#cbd5e0" stroke-width="1"/>
+                            <line x1="80" y1="-3" x2="80" y2="3" stroke="#cbd5e0" stroke-width="1"/>
+                            <text x="40" y="12" text-anchor="middle" font-size="8" fill="#cbd5e0" class="mono">1:50000</text>
+                        </g>
+                    </svg>
+                `,
+                legend: ["深南轴线", "建成组团", "绿化隔离"],
+                details: `
+                    <h2 class="text-xl font-bold mb-2 serif text-gray-800">1986版总规：城市骨架确立</h2>
+                    <div class="mb-4">
+                        <div class="text-[10px] text-blue-500 font-bold border-b border-blue-100 pb-1 mb-2">
+                             DOCUMENT SOURCE: 《深圳经济特区总体规划(1986-2000)》
+                        </div>
+                        <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 mb-2 mono">KEYWORD: LINEAR CLUSTER</span>
+                        <p class="text-sm text-gray-600 leading-relaxed text-justify">
+                            <strong class="text-gray-800">规划背景：</strong>面对早期城市无序蔓延和狭长的地形特征，深圳急需确立城市长远发展的空间结构。
+                            <br><br>
+                            <strong class="text-gray-800">核心策略：</strong>创造性地提出了<strong class="text-gray-800">“带状组团式”</strong>结构。以深南大道为城市发展主轴，串联罗湖、上步、南山三个功能组团，组团间保留宽阔的绿化隔离带（“扁担挑箩筐”模式）。这种具有高度弹性的结构，荣获国家优秀城市规划设计一等奖。
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="border border-gray-200 p-3 bg-white/50">
+                            <div class="text-xs text-gray-400 mb-1">LANDMARK</div>
+                            <div class="font-bold text-sm text-gray-700">国贸大厦</div>
+                            <div class="text-[10px] text-blue-500">“深圳速度”的物理象征</div>
+                        </div>
+                        <div class="border border-gray-200 p-3 bg-white/50">
+                            <div class="text-xs text-gray-400 mb-1">POLICY</div>
+                            <div class="font-bold text-sm text-gray-700">土地有偿使用</div>
+                            <div class="text-[10px] text-blue-500">1987年敲响“第一槌”</div>
+                        </div>
+                    </div>
+                `
             },
             {
-                id: '1996',
-                year: '1996 - 2009',
-                title: '扩张期：三轴三带',
-                subtitle: '《深圳市城市总体规划（1996-2010）》',
-                icon: <MaximizeIcon className="w-5 h-5" />,
-                visualization: Map1996,
-                keywords: ['全域统筹', '高新技术', '区域中心'],
-                description: '随着特区内外二元结构矛盾加剧，政策重心转向“全域城市化”。通过“三轴三带”打破二线关限制，将宝安、龙岗纳入核心发展区。',
-                details: [
-                    '空间策略：建立网状结构，强化轴向联系，发展西部港口与东部工业。',
-                    '产业转型：明确以高新技术产业为先导，确立物流支柱地位。',
-                    '基础设施：大规模建设高速公路网与港口，奠定现代大都市骨架。'
-                ],
-                source: '来源：2000年国务院批复'
+                year: "1996-2005",
+                title: "网格化与高新产业",
+                subtitle: "Expansion Phase",
+                svgContent: `
+                    <svg viewBox="0 0 600 400" class="w-full h-full">
+                        <defs>
+                            <pattern id="grid2" width="20" height="20" patternUnits="userSpaceOnUse">
+                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+                            </pattern>
+                            <pattern id="chip" width="10" height="10" patternUnits="userSpaceOnUse">
+                                <rect width="5" height="5" fill="#c6f6d5" />
+                                <path d="M5,2.5 L10,2.5 M2.5,5 L2.5,10" stroke="#48bb78" stroke-width="0.5"/>
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid2)" />
+                        
+                        <!-- 背景地形 -->
+                        <path d="M0,0 L600,0 L600,50 C450,80 300,20 150,60 L0,40 Z" fill="#f7fafc" stroke="none"/> <!-- 北部山脉 -->
+
+                        <!-- 三横四纵骨架 -->
+                        <g class="draw-anim">
+                            <!-- 横向 -->
+                            <path d="M20,150 L580,150" stroke="#90cdf4" stroke-width="2" /> <!-- 北环 -->
+                            <path d="M20,200 L580,200" stroke="#4299e1" stroke-width="5" /> <!-- 深南 -->
+                            <path d="M20,250 L580,250" stroke="#90cdf4" stroke-width="3" /> <!-- 滨海 -->
+                            <!-- 纵向 -->
+                            <path d="M150,100 L150,300" stroke="#cbd5e0" stroke-width="2" /> <!-- 南海 -->
+                            <path d="M280,100 L280,300" stroke="#cbd5e0" stroke-width="2" /> <!-- 新洲 -->
+                            <path d="M380,100 L380,300" stroke="#cbd5e0" stroke-width="2" /> <!-- 红岭 -->
+                        </g>
+
+                        <!-- 双中心：福田中心区 -->
+                        <g transform="translate(280, 200)">
+                            <rect x="-40" y="-40" width="80" height="80" fill="rgba(66, 153, 225, 0.15)" stroke="#2b6cb0" stroke-width="1"/>
+                            <text x="0" y="55" text-anchor="middle" font-size="10" fill="#2b6cb0" font-weight="bold">FUTIAN CBD</text>
+                            <!-- 市民中心 -->
+                            <path d="M-30,0 Q0,-25 30,0 L30,10 L-30,10 Z" fill="#fff" stroke="#e53e3e" stroke-width="1.5"/>
+                            <rect x="-10" y="10" width="20" height="20" fill="none" stroke="#2d3748" stroke-width="0.5"/>
+                        </g>
+                        
+                        <!-- 罗湖中心 -->
+                        <g transform="translate(420, 200)">
+                            <circle cx="0" cy="0" r="30" fill="none" stroke="#718096" stroke-width="1" stroke-dasharray="2 2"/>
+                            <text x="0" y="5" text-anchor="middle" font-size="10" fill="#718096">LUOHU</text>
+                        </g>
+
+                        <!-- 高新园 (科技感纹理) -->
+                        <g transform="translate(150, 180)">
+                            <rect x="-25" y="-25" width="50" height="50" fill="url(#chip)" stroke="#38a169" stroke-width="1"/>
+                            <text x="0" y="35" text-anchor="middle" font-size="8" fill="#2f855a">HI-TECH PARK</text>
+                        </g>
+
+                        <!-- 港口物流 -->
+                        <g transform="translate(80, 300)">
+                             <rect x="0" y="0" width="20" height="10" fill="#cbd5e0" />
+                             <rect x="5" y="-10" width="2" height="10" fill="#718096" />
+                             <line x1="5" y1="-10" x2="20" y2="-5" stroke="#718096" />
+                             <text x="10" y="20" text-anchor="middle" font-size="8" fill="#718096">PORT</text>
+                        </g>
+
+                        <!-- 装饰数据 -->
+                        <g transform="translate(500, 50)">
+                            <rect x="0" y="0" width="60" height="40" fill="none" stroke="#cbd5e0" />
+                            <text x="5" y="10" font-size="6" fill="#cbd5e0" class="mono">POPULATION: ++</text>
+                            <text x="5" y="20" font-size="6" fill="#cbd5e0" class="mono">GDP: GROWING</text>
+                            <polyline points="5,35 15,30 25,32 35,25 55,15" fill="none" stroke="#4299e1" stroke-width="1"/>
+                        </g>
+                    </svg>
+                `,
+                legend: ["快速路网", "双中心", "高新技术带"],
+                details: `
+                    <h2 class="text-xl font-bold mb-2 serif text-gray-800">1996版总规：网格化与高新转型</h2>
+                    <div class="mb-4">
+                        <div class="text-[10px] text-blue-500 font-bold border-b border-blue-100 pb-1 mb-2">
+                             DOCUMENT SOURCE: 《深圳市城市总体规划(1996-2010)》
+                        </div>
+                        <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 mb-2 mono">KEYWORD: GRID & HI-TECH</span>
+                        <p class="text-sm text-gray-600 leading-relaxed text-justify">
+                            <strong class="text-gray-800">空间重构：</strong>城市快速扩张，单纯的带状结构已无法满足需求。规划确立了<strong class="text-gray-800">“三横四纵”</strong>的快速路网骨架，并将城市行政与文化中心从罗湖西移至福田，形成“罗湖-福田”双中心格局。
+                            <br><br>
+                            <strong class="text-gray-800">产业升级：</strong>明确了以高新技术产业为先导的发展战略，南山高新技术产业园区的设立，标志着深圳从“三来一补”加工贸易向创新驱动的决定性转身。
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="border border-gray-200 p-3 bg-white/50">
+                            <div class="text-xs text-gray-400 mb-1">LANDMARK</div>
+                            <div class="font-bold text-sm text-gray-700">市民中心</div>
+                            <div class="text-[10px] text-blue-500">大鹏展翅屋顶 / 开放型政府</div>
+                        </div>
+                        <div class="border border-gray-200 p-3 bg-white/50">
+                            <div class="text-xs text-gray-400 mb-1">INFRASTRUCTURE</div>
+                            <div class="font-bold text-sm text-gray-700">滨海大道</div>
+                            <div class="text-[10px] text-blue-500">填海造地 / 城市向海</div>
+                        </div>
+                    </div>
+                `
             },
             {
-                id: '2010',
-                year: '2010 - 2020',
-                title: '转型期：双中心',
-                subtitle: '《深圳市城市总体规划（2010-2020）》',
-                icon: <ZapIcon className="w-5 h-5" />,
-                visualization: Map2010,
-                keywords: ['存量优化', '城市更新', '生态铁线'],
-                description: '面对土地资源枯竭（四个难以为继），深圳进入“存量规划”时代。重点在于提升城市质量、生态保护以及深港合作。',
-                details: [
-                    '空间策略：确立“福田-罗湖”与“前海”双中心，建设五个副中心。',
-                    '土地政策：划定974平方公里基本生态控制线，严控建设用地增量。',
-                    '实施手段：大力推行城市更新（旧改），向天空要空间，向存量要效益。'
-                ],
-                source: '来源：2010年国务院批复'
+                year: "2006-2020",
+                title: "多中心与湾区核心",
+                subtitle: "Innovation Phase",
+                svgContent: `
+                    <svg viewBox="0 0 600 400" class="w-full h-full">
+                         <defs>
+                            <pattern id="forest" width="8" height="8" patternUnits="userSpaceOnUse">
+                                <circle cx="2" cy="2" r="1.5" fill="#c6f6d5" opacity="0.5"/>
+                                <circle cx="6" cy="6" r="1.5" fill="#c6f6d5" opacity="0.5"/>
+                            </pattern>
+                        </defs>
+                        <!-- 生态控制线背景 -->
+                        <path d="M0,0 L600,0 L600,100 C500,120 400,60 300,90 C200,60 100,110 0,80 Z" fill="url(#forest)" stroke="none"/> <!-- 北部生态线 -->
+                        
+                        <!-- 复杂的城市网络 -->
+                        <g stroke="#e2e8f0" stroke-width="0.5">
+                            <path d="M0,0 L600,400 M600,0 L0,400 M300,0 L300,400 M0,200 L600,200" opacity="0.5"/>
+                        </g>
+
+                        <!-- 海岸线优化 -->
+                        <path d="M0,320 Q100,300 150,330 T300,310 T450,330 T600,300" fill="none" stroke="#bee3f8" stroke-width="2"/>
+                        <!-- 深圳湾大桥 -->
+                        <path d="M150,330 Q160,380 200,400" stroke="#cbd5e0" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+                        <!-- 地铁网络 (曲线) -->
+                        <g fill="none" stroke-width="1.5" opacity="0.8">
+                            <path d="M50,250 C150,200 300,200 550,250" stroke="#48bb78" /> <!-- 1号线意向 -->
+                            <path d="M200,100 C200,200 250,300 350,350" stroke="#ecc94b" /> <!-- 纵向线意向 -->
+                            <path d="M100,300 C200,250 400,250 500,300" stroke="#f56565" /> <!-- 11号线意向 -->
+                        </g>
+
+                        <!-- 多中心节点 -->
+                        <!-- 福田 -->
+                        <circle cx="300" cy="250" r="8" fill="#4299e1" class="pulse-anim" />
+                        <!-- 前海 -->
+                        <circle cx="150" cy="280" r="10" fill="#4299e1" class="pulse-anim" />
+                        <!-- 后海/超总 -->
+                        <circle cx="220" cy="270" r="6" fill="#4299e1" />
+                        <!-- 深圳北 -->
+                        <circle cx="280" cy="150" r="6" fill="#4299e1" />
+                        <!-- 罗湖 -->
+                        <circle cx="400" cy="240" r="6" fill="#4299e1" />
+                        
+                        <!-- 强连接线 -->
+                        <path class="draw-anim" d="M150,280 L220,270 L300,250 L400,240 M300,250 L280,150" stroke="#2b6cb0" stroke-width="1.5" />
+
+                        <!-- 地标抽象：春笋 -->
+                        <g transform="translate(220, 270)">
+                            <path d="M0,0 L0,-30 Q5,-15 10,0 Z" fill="none" stroke="#2d3748" stroke-width="1" />
+                        </g>
+                        <!-- 地标抽象：平安 -->
+                        <g transform="translate(300, 250)">
+                            <path d="M0,0 L0,-60 L-5,0 Z" fill="none" stroke="#2d3748" stroke-width="1" />
+                        </g>
+
+                        <text x="150" y="310" text-anchor="middle" font-size="10" fill="#2d3748" font-weight="bold">QIANHAI</text>
+                        <text x="310" y="180" text-anchor="middle" font-size="10" fill="#2d3748" font-weight="bold">PING AN</text>
+
+                        <!-- 生态红线标注 -->
+                        <g transform="translate(50, 50)">
+                            <rect x="0" y="0" width="80" height="20" rx="10" fill="#c6f6d5" opacity="0.8"/>
+                            <text x="40" y="13" text-anchor="middle" font-size="8" fill="#276749" font-weight="bold">ECOLOGICAL LINE</text>
+                        </g>
+                    </svg>
+                `,
+                legend: ["多级中心", "轨道网络", "生态控制线"],
+                details: `
+                    <h2 class="text-xl font-bold mb-2 serif text-gray-800">2010版总规：湾区核心与质量转型</h2>
+                    <div class="mb-4">
+                        <div class="text-[10px] text-blue-500 font-bold border-b border-blue-100 pb-1 mb-2">
+                             DOCUMENT SOURCE: 《深圳市城市总体规划(2010-2020)》
+                        </div>
+                        <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 mb-2 mono">KEYWORD: POLYCENTRIC & QUALITY</span>
+                        <p class="text-sm text-gray-600 leading-relaxed text-justify">
+                            <strong class="text-gray-800">区域协同：</strong>深圳定位升级为“全国经济中心城市”，确立了前海中心、福田-罗湖中心双核驱动的<strong class="text-gray-800">“三级中心”</strong>体系，全力拥抱大湾区。
+                            <br><br>
+                            <strong class="text-gray-800">存量提质：</strong>发展模式从增量扩张转向存量优化（城市更新）。严格划定974平方公里基本生态控制线（“铁线”），提出建设宜居的“公园城市”，强调从“深圳速度”向“深圳质量”的根本转变。
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="border border-gray-200 p-3 bg-white/50">
+                            <div class="text-xs text-gray-400 mb-1">LANDMARK</div>
+                            <div class="font-bold text-sm text-gray-700">平安金融中心</div>
+                            <div class="text-[10px] text-blue-500">599米 / 天际线高度</div>
+                        </div>
+                        <div class="border border-gray-200 p-3 bg-white/50">
+                            <div class="text-xs text-gray-400 mb-1">STRATEGY</div>
+                            <div class="font-bold text-sm text-gray-700">前海深港合作区</div>
+                            <div class="text-[10px] text-blue-500">特区中的特区 / 制度创新</div>
+                        </div>
+                    </div>
+                `
             }
         ];
 
-        // --- 封面组件 ---
-        const Cover = ({ onStart }) => (
-            <div className="absolute inset-0 z-50 bg-[#f9f9f7] flex flex-col items-center justify-center p-8 fade-in">
-                <div className="max-w-2xl w-full text-center border-2 border-gray-800 p-8 md:p-16 bg-white shadow-2xl relative">
-                     {/* 装饰性角标 */}
-                     <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-gray-800 -mt-1 -ml-1"></div>
-                     <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-gray-800 -mt-1 -mr-1"></div>
-                     <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-gray-800 -mb-1 -ml-1"></div>
-                     <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-gray-800 -mb-1 -mr-1"></div>
-                     
-                     <div className="mb-2 text-sm text-gray-500 tracking-[0.3em] uppercase">Policy Visualization</div>
-                     <h1 className="text-4xl md:text-6xl font-bold serif text-gray-900 mb-6 tracking-wide">深圳</h1>
-                     <h2 className="text-xl md:text-2xl text-gray-600 mb-8 serif border-b pb-4 inline-block border-gray-300">城市发展政策演变 (1985-2020)</h2>
-                     <p className="text-gray-500 mb-12 leading-relaxed text-sm md:text-base font-light">
-                         一部从“速度”向“质量”转型的规划史<br/>
-                         带状组团 · 网状扩张 · 双中心生态
-                     </p>
-                     
-                     <button 
-                        onClick={onStart}
-                        className="group relative inline-flex items-center gap-2 px-10 py-4 bg-gray-900 text-white font-serif tracking-widest hover:bg-teal-800 transition-all duration-300"
-                     >
-                        开始探索
-                        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                        <span className="absolute -bottom-2 -right-2 w-full h-full border border-gray-900 group-hover:border-teal-800 transition-colors duration-300 -z-10"></span>
-                     </button>
-                </div>
-                <div className="absolute bottom-8 text-[10px] text-gray-400">Designed for Visualization Analysis</div>
-            </div>
-        );
+        // 切换逻辑
+        function switchEra(index) {
+            const data = eraData[index];
+            const btns = document.querySelectorAll('.timeline-item');
+            
+            // 更新按钮状态
+            btns.forEach((btn, i) => {
+                if(i === index) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
 
-        const App = () => {
-            const [activePolicy, setActivePolicy] = useState(policies[0]);
-            const [showCover, setShowCover] = useState(true);
-            const [isFading, setIsFading] = useState(false);
+            // 更新视觉区域 (SVG)
+            const visualContainer = document.getElementById('visual-container');
+            visualContainer.innerHTML = `<div class="fade-in w-full h-full">${data.svgContent}</div>`;
 
-            const handleStart = () => {
-                setIsFading(true);
-                setTimeout(() => setShowCover(false), 500); // 等待淡出动画
-            };
+            // 更新底部图例文字
+            if(data.legend) {
+                document.getElementById('legend-text-1').innerText = data.legend[0];
+                document.getElementById('legend-text-2').innerText = data.legend[1];
+                document.getElementById('legend-text-3').innerText = data.legend[2];
+            }
 
-            return (
-                <div className="h-full w-full relative overflow-hidden bg-white">
-                    {/* 封面层 */}
-                    {showCover && (
-                        <div className={`absolute inset-0 z-50 transition-opacity duration-500 ${isFading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                            <Cover onStart={handleStart} />
-                        </div>
-                    )}
+            // 更新详情内容 (Text)
+            const infoContent = document.getElementById('info-content');
+            infoContent.innerHTML = `<div class="fade-in">${data.details}</div>`;
+        }
 
-                    {/* 主内容层：使用 Flex 实现全屏布局 */}
-                    <div className={`flex flex-col md:flex-row h-full w-full transition-opacity duration-1000 ${showCover ? 'opacity-0' : 'opacity-100'}`}>
-                        
-                        {/* 左侧：可视化展示区 (固定，不可滚动，自适应填充) */}
-                        <div className="md:w-1/2 md:h-full h-1/2 flex-shrink-0 bg-[#f4f4f2] p-4 md:p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-200 relative overflow-hidden">
-                            <div className="absolute top-4 left-6 z-10 hidden md:block">
-                                <h1 className="text-2xl font-bold serif text-gray-800 tracking-wide">SHENZHEN</h1>
-                                <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">Urban Evolution</p>
-                            </div>
-                            
-                            {/* 动态图表容器 - 自适应高度 */}
-                            <div className="w-full max-w-lg aspect-[4/3] border-2 border-gray-300 p-2 bg-white shadow-lg relative flex-shrink-0">
-                                <div className="absolute top-0 left-0 w-full h-full border border-dashed border-gray-200 pointer-events-none m-1"></div>
-                                <activePolicy.visualization />
-                            </div>
+        // 初始化
+        window.onload = () => switchEra(0);
 
-                            {/* 图注区 */}
-                            <div className="mt-4 md:mt-8 text-center w-full">
-                                <p className="text-sm font-bold text-gray-700 mb-2">{activePolicy.subtitle}</p>
-                                <div className="flex flex-wrap justify-center gap-2">
-                                    {activePolicy.keywords.map((kw, idx) => (
-                                        <span key={idx} className="px-2 py-1 text-[10px] md:text-xs border border-gray-400 text-gray-600 rounded-full bg-transparent">
-                                            {kw}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 右侧：交互式时间轴与文本解读 (可滚动区域) */}
-                        <div className="md:w-1/2 md:h-full h-1/2 flex flex-col bg-white overflow-hidden">
-                            {/* 顶部介绍 - 固定在滚动区域上方 */}
-                            <div className="p-6 md:p-8 border-b border-gray-100 flex-shrink-0 bg-white z-10 shadow-sm">
-                                <h2 className="text-lg md:text-xl serif font-bold text-gray-900 mb-1">政策演变时间轴</h2>
-                                <p className="text-xs md:text-sm text-gray-600">点击下方卡片查看不同阶段的空间策略。</p>
-                            </div>
-
-                            {/* 滚动列表区域 */}
-                            <div className="flex-1 overflow-y-auto custom-scroll p-4 md:p-8 space-y-4 md:space-y-6">
-                                {policies.map((policy) => (
-                                    <div 
-                                        key={policy.id}
-                                        onClick={() => setActivePolicy(policy)}
-                                        className={`group cursor-pointer transition-all duration-300 relative pl-6 md:pl-8 border-l-2 ${activePolicy.id === policy.id ? 'border-teal-600' : 'border-gray-200 hover:border-gray-300'}`}
-                                    >
-                                        <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 bg-white transition-colors ${activePolicy.id === policy.id ? 'border-teal-600 bg-teal-50' : 'border-gray-300 group-hover:border-gray-400'}`}></div>
-
-                                        <div className={`p-4 rounded border transition-all ${activePolicy.id === policy.id ? 'bg-white border-teal-600 shadow-md' : 'bg-transparent border-gray-200 hover:bg-gray-50'}`}>
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className={`text-[10px] md:text-xs font-bold tracking-wider px-2 py-0.5 border rounded ${activePolicy.id === policy.id ? 'text-teal-700 border-teal-200 bg-teal-50' : 'text-gray-500 border-gray-300'}`}>
-                                                    {policy.year}
-                                                </span>
-                                                <div className={`${activePolicy.id === policy.id ? 'text-teal-600' : 'text-gray-400'}`}>
-                                                    {policy.icon}
-                                                </div>
-                                            </div>
-                                            
-                                            <h3 className="text-base md:text-lg font-bold text-gray-800 mb-1 serif">{policy.title}</h3>
-                                            
-                                            {/* 展开的详细内容 */}
-                                            <div className={`overflow-hidden transition-all duration-500 ${activePolicy.id === policy.id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                                <p className="text-xs md:text-sm text-gray-600 leading-relaxed mb-3 mt-2">
-                                                    {policy.description}
-                                                </p>
-                                                <ul className="space-y-1.5 mb-2">
-                                                    {policy.details.map((detail, idx) => (
-                                                        <li key={idx} className="text-xs text-gray-500 flex items-start leading-tight">
-                                                            <span className="mr-2 text-teal-500 flex-shrink-0">▪</span>
-                                                            {detail}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                                <p className="text-[10px] text-gray-400 text-right italic pt-1">
-                                                    {policy.source}
-                                                </p>
-                                            </div>
-                                            {/* 未选中时显示的简略提示 */}
-                                            {activePolicy.id !== policy.id && (
-                                                <p className="text-xs text-gray-400 truncate">点击展开详细解读...</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                                
-                                <div className="p-4 text-center">
-                                    <p className="text-[10px] text-gray-300">数据来源：深圳市规划和自然资源局</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
     </script>
 </body>
 </html>
